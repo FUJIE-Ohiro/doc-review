@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+~$*.docx
+审校结果_*/
+*.log
