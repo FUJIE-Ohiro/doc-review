@@ -58,6 +58,25 @@ class AuditTests(unittest.TestCase):
         for required in ('页面大小','首行缩进','中文字体','章节语言','姓名语言','引用编号','参考文献编号'):
             self.assertIn(required,cats)
 
+    def test_figure_reference_in_body_not_caption(self):
+        import xml.etree.ElementTree as ET
+        from word_audit import category_of
+        class MinimalStyles:
+            def p_props(self, p): return ([], 'Normal')
+            styles = {'Normal': {'name': 'Normal'}}
+        ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+        p=ET.fromstring(f'<w:p xmlns:w="{ns}"><w:r><w:t>图 2 的距离数据支持这一解释。</w:t></w:r></w:p>')
+        self.assertEqual(category_of(p, 4, False, MinimalStyles()), '正文')
+
+    def test_reference_left_alignment_allowed(self):
+        import xml.etree.ElementTree as ET
+        from word_audit import Auditor, Styles
+        p=ET.fromstring('<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:t>[1] Example article.</w:t></w:r></w:p>')
+        a=Auditor('sample.docx')
+        styles=Styles(None); styles.doc_p=None; styles.doc_r=None
+        a._paragraph_check(p, '[1] Example article.', '参考文献条目', '参考文献测试', styles, 999)
+        self.assertFalse(any(r[2]=='段落对齐' for r in a.rows))
+
     def test_text_language_detection(self):
         self.assertTrue(contains_han('清华大学'))
         self.assertFalse(contains_han('Tsinghua'))
