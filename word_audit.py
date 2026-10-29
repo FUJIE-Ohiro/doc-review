@@ -158,7 +158,12 @@ def category_of(p, index, ref_state, styles):
     if index==0: return '文章标题'
     if index==1: return '作者姓名'
     if index==2: return '所属单位'
-    if re.match(r'^\s*(?:图\s*\d+|表\s*\d+|Figure\s+\d+|Table\s+\d+)\s*[.．:：、\-]?',s,re.I):
+    # 「图 2 的数据表明」属于正文，不能因为开头出现图号就判为题注。
+    # 优先识别 Word 的题注样式；无题注样式时要求编号后有明确的标点。
+    pprops,sid=styles.p_props(p)
+    stylename=(styles.styles.get(sid,{}).get('name') or '').lower()
+    if ('caption' in stylename or '题注' in stylename or
+        re.match(r'^\s*(?:图\s*\d+|表\s*\d+|Figure\s+\d+|Table\s+\d+)\s*[.．:：、\-]',s,re.I)):
         return '图表标题'
     if re.match(r'^\s*(?:\d+(?:\.\d+)+)\s+\S',s): return '二级标题'
     if re.match(r'^\s*\d+[.．、]?\s+\S',s): return '一级标题'
@@ -270,11 +275,11 @@ class Auditor:
             return None
         expected_align={'文章标题':'center','作者姓名':'center','所属单位':'center',
                         '一级标题':'left','二级标题':'left','图表标题':'center',
-                        '正文':'both','参考文献条目':'both'}[role]
+                        '正文':'both','参考文献条目':None}[role]
         align=field('jc','val') or 'left'   # Word 的未定义默认通常左对齐
         if role=='正文' and index>self.ref_start: # 参考文献中的非编号文字不强制对齐
             pass
-        elif align!=expected_align:
+        elif expected_align is not None and align!=expected_align:
             self.issue('错误','段落对齐',loc,align,expected_align,'请使用段落属性，而非空格排版')
         spacing_before=field('spacing','before')
         spacing_after=field('spacing','after')
